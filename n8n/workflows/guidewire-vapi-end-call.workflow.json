@@ -1,0 +1,105 @@
+{
+  "name": "Guidewire Screening - Vapi End Call Report",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "guidewire/vapi-end",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "e6857ac2-91f0-4aaf-a8ed-end001",
+      "name": "Webhook - Vapi End Call",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nreturn [{\n  json: {\n    screening_api_base_url: body.screening_api_base_url || 'http://host.docker.internal:4242',\n    local_folder: body.local_folder,\n    drive_folder_id: body.drive_folder_id,\n    results_csv: body.results_csv,\n    google_spreadsheet_id: body.google_spreadsheet_id,\n    event: body.event || body\n  }\n}];"
+      },
+      "id": "929bf2cf-908a-4610-b94e-end002",
+      "name": "Prepare Report Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.screening_api_base_url }}/vapi/end-of-call",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "ad472f08-8807-43b6-9724-end003",
+      "name": "Screening API - Evaluate Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "94bcd0bc-f86b-401f-9ae7-end004",
+      "name": "Respond - Vapi End Call",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Vapi End Call": {
+      "main": [
+        [
+          {
+            "node": "Prepare Report Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Report Payload": {
+      "main": [
+        [
+          {
+            "node": "Screening API - Evaluate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Screening API - Evaluate Report": {
+      "main": [
+        [
+          {
+            "node": "Respond - Vapi End Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "name": "Guidewire Screening - Preview Candidates",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "guidewire/preview",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5c8a2755-8b4c-4494-babe-preview001",
+      "name": "Webhook - Preview",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($json.body && $json.body.screening_api_base_url) || 'http://host.docker.internal:4242' }}/preview",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {}
+      },
+      "id": "a12c4379-b56d-4a61-a0c4-preview002",
+      "name": "Screening API - Preview",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "c5034799-c869-4e15-950f-preview003",
+      "name": "Respond - Preview",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Preview": {
+      "main": [
+        [
+          {
+            "node": "Screening API - Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Screening API - Preview": {
+      "main": [
+        [
+          {
+            "node": "Respond - Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

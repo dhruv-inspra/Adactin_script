@@ -1,0 +1,177 @@
+{
+  "name": "Role Folder Screening - Drive Trigger to Vapi",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "={{ $env.ROLE_PARENT_FOLDER_ID }}",
+          "mode": "id"
+        },
+        "event": "fileCreated",
+        "options": {
+          "fields": [
+            "id",
+            "name",
+            "mimeType",
+            "parents",
+            "modifiedTime"
+          ]
+        }
+      },
+      "id": "9ec787b2-d5aa-4f68-a94a-role001",
+      "name": "Google Drive - New Role File Or Folder",
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "id": "bd594d6e-fc1b-4d8f-a2ce-role002",
+      "name": "Wait For Folder Uploads",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json.body || $json;\nconst mimeType = source.mimeType || source.mime_type || '';\nconst name = source.name || source.fileName || '';\nconst parents = source.parents || source.parentIds || [];\nconst isFolder = mimeType === 'application/vnd.google-apps.folder';\nconst isCandidateResume = /\\.(pdf|docx)$/i.test(name) && !/(^|\\b)(jd|job\\s*description)(\\b|$)/i.test(name);\nconst roleFolderId = isFolder ? source.id : parents[0];\nif (!roleFolderId) {\n  throw new Error('Could not resolve role folder id from Google Drive trigger payload. Include id, mimeType, name, and parents fields.');\n}\nreturn [{\n  json: {\n    screening_service_url: $env.SCREENING_SERVICE_URL || $env.SCREENING_API_BASE_URL || 'http://host.docker.internal:4242',\n    drive_folder_id: roleFolderId,\n    candidate_file_id: isCandidateResume ? source.id : undefined,\n    candidate_file_name: isCandidateResume ? name : undefined,\n    execute: ($env.VAPI_EXECUTE_CALLS || 'false').toLowerCase() === 'true',\n    trigger_file_id: source.id,\n    trigger_file_name: name,\n    trigger_mime_type: mimeType\n  }\n}];"
+      },
+      "id": "20e3abf8-b74b-4346-bf86-role003",
+      "name": "Prepare Role Folder Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.screening_service_url }}/drive-event",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "a0e48d9a-c7ed-4a55-ab26-role004",
+      "name": "Python Service - Process Drive Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const source = $json.body || $json;\nconst offsetMinutes = Number(source.dialing_timezone_offset_minutes || $env.DIALING_TIMEZONE_OFFSET_MINUTES || 330);\nconst nowUtc = new Date();\nconst local = new Date(nowUtc.getTime() + offsetMinutes * 60000);\nfunction atLocalHour(date, hour) {\n  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, 0, 0, 0) - offsetMinutes * 60000);\n}\nfunction nextBusinessStart(date) {\n  const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 9, 0, 0, 0));\n  while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next.setUTCDate(next.getUTCDate() + 1);\n  return new Date(next.getTime() - offsetMinutes * 60000);\n}\nconst day = local.getUTCDay();\nconst hour = local.getUTCHours();\nlet waitUntil = nowUtc;\nlet shouldWait = false;\nif (day === 0 || day === 6) {\n  const monday = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 9, 0, 0, 0));\n  monday.setUTCDate(monday.getUTCDate() + (day === 6 ? 2 : 1));\n  waitUntil = new Date(monday.getTime() - offsetMinutes * 60000);\n  shouldWait = true;\n} else if (hour < 9) {\n  waitUntil = atLocalHour(local, 9);\n  shouldWait = true;\n} else if (hour >= 18) {\n  waitUntil = nextBusinessStart(local);\n  shouldWait = true;\n}\nreturn [{ json: { ...$json, dialing_business_hours: 'Mon-Fri 09:00-18:00', dialing_timezone_offset_minutes: offsetMinutes, dialing_wait_until: waitUntil.toISOString(), should_wait_for_dialing_window: shouldWait, queued_for_next_dialing_window: shouldWait } }];"
+      },
+      "id": "0f9ea7d9-e2d0-4e82-aef1-role005",
+      "name": "Calculate Dialing Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "specificTime",
+        "dateTime": "={{ $json.dialing_wait_until }}"
+      },
+      "id": "41f7b3a1-2c58-4561-9c55-role006",
+      "name": "Wait Until Dialing Window",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Google Drive - New Role File Or Folder": {
+      "main": [
+        [
+          {
+            "node": "Wait For Folder Uploads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait For Folder Uploads": {
+      "main": [
+        [
+          {
+            "node": "Prepare Role Folder Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Role Folder Payload": {
+      "main": [
+        [
+          {
+            "node": "Calculate Dialing Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Dialing Window": {
+      "main": [
+        [
+          {
+            "node": "Wait Until Dialing Window",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Until Dialing Window": {
+      "main": [
+        [
+          {
+            "node": "Python Service - Process Drive Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python Service - Process Drive Event": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

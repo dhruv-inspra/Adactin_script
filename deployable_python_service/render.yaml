@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: role-folder-screening
+    runtime: python
+    buildCommand: pip install -r deployable_python_service/requirements.txt
+    startCommand: uvicorn deployable_python_service.app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: VAPI_EXECUTE_CALLS
+        value: "false"
+      - key: ROLE_SCREENING_WORK_DIR
+        value: /tmp/role-screening
