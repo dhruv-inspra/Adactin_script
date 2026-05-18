@@ -8,11 +8,11 @@ from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 
-BUSINESS_START = time(0, 0)
-BUSINESS_END = time(23, 59, 59, 999999)
-BUSINESS_DAYS = set(range(7))
-BUSINESS_HOURS_LABEL = "Daily 00:00-24:00"
-DEFAULT_TIMEZONE = "Asia/Kolkata"
+BUSINESS_START = time(9, 0)
+BUSINESS_END = time(18, 0)
+BUSINESS_DAYS = set(range(5))
+BUSINESS_HOURS_LABEL = "Mon-Fri 09:00-18:00"
+DEFAULT_TIMEZONE = "Australia/Melbourne"
 TIMEZONE_ALIASES = {
     "Melbourne, Australia": "Australia/Melbourne",
     "Melbourne": "Australia/Melbourne",

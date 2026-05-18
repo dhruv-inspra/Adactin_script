@@ -87,14 +87,14 @@ class N8nIntegrationTests(unittest.TestCase):
         self.assertEqual(response["payload_count"], 1)
         self.assertTrue(queued_text)
 
-    def test_dialing_window_is_open_after_6pm_during_24_hour_testing(self) -> None:
-        after_hours = datetime(2026, 5, 14, 18, 30, tzinfo=timezone(timedelta(hours=5, minutes=30)))
+    def test_business_hours_next_window_after_6pm_is_next_working_day(self) -> None:
+        after_hours = datetime(2026, 5, 14, 18, 30, tzinfo=timezone(timedelta(hours=10)))
 
         window = current_dialing_window(after_hours)
 
-        self.assertTrue(window["is_open"])
-        self.assertTrue(window["scheduled_for"].startswith("2026-05-14T18:30:00"))
-        self.assertEqual(window["business_hours"], "Daily 00:00-24:00")
+        self.assertFalse(window["is_open"])
+        self.assertTrue(window["scheduled_for"].startswith("2026-05-15T09:00:00"))
+        self.assertEqual(window["business_hours"], "Mon-Fri 09:00-18:00")
 
     def test_vapi_event_request_evaluates_and_returns_result_row(self) -> None:
         event = {
