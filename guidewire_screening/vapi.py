@@ -14,6 +14,7 @@ from .prompting import (
 
 
 VAPI_BASE_URL = "https://api.vapi.ai"
+VAPI_USER_AGENT = "adactin-role-screening/1.0"
 
 
 def build_vapi_call_payload(
@@ -71,8 +72,10 @@ def place_vapi_call(payload: dict[str, Any], api_key: str, base_url: str = VAPI_
         url=f"{base_url.rstrip('/')}/call",
         data=json.dumps(payload).encode("utf-8"),
         headers={
-            "Authorization": f"Bearer {api_key}",
+            "Authorization": f"Bearer {api_key.strip()}",
+            "Accept": "application/json",
             "Content-Type": "application/json",
+            "User-Agent": VAPI_USER_AGENT,
         },
         method="POST",
     )
