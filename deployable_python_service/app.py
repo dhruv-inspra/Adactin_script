@@ -6,7 +6,8 @@ import urllib.error
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from guidewire_screening.api import process_vapi_event_request
 from guidewire_screening.business_hours import current_dialing_window, queue_call_payloads
@@ -17,11 +18,43 @@ from guidewire_screening.vapi import build_vapi_call_payload, place_vapi_call
 
 
 app = FastAPI(title="Role Folder Screening Service")
+SERVICE_VERSION = "diagnostics-2026-05-18-1"
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Unhandled service error: {type(exc).__name__}: {exc}",
+            "path": request.url.path,
+            "service_version": SERVICE_VERSION,
+        },
+    )
 
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "service": "role-folder-screening"}
+    return {"ok": True, "service": "role-folder-screening", "service_version": SERVICE_VERSION}
+
+
+@app.get("/config-check")
+def config_check() -> dict[str, Any]:
+    return {
+        "ok": True,
+        "service_version": SERVICE_VERSION,
+        "vapi_execute_calls": _bool_value(os.environ.get("VAPI_EXECUTE_CALLS"), False),
+        "env_present": {
+            "GOOGLE_SERVICE_ACCOUNT_JSON": bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")),
+            "GOOGLE_SERVICE_ACCOUNT_JSON_B64": bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_B64")),
+            "GOOGLE_SERVICE_ACCOUNT_JSON_TEXT": bool(os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON_TEXT")),
+            "VAPI_PHONE_NUMBER_ID": bool(os.environ.get("VAPI_PHONE_NUMBER_ID")),
+            "VAPI_ASSISTANT_ID": bool(os.environ.get("VAPI_ASSISTANT_ID")),
+            "VAPI_API_KEY": bool(os.environ.get("VAPI_API_KEY")),
+            "VAPI_SERVER_URL": bool(os.environ.get("VAPI_SERVER_URL")),
+        },
+        "dialing_window": current_dialing_window(),
+    }
 
 
 @app.post("/drive-event")
