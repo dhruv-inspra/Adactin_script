@@ -13,15 +13,28 @@ BUSINESS_END = time(23, 59, 59, 999999)
 BUSINESS_DAYS = set(range(7))
 BUSINESS_HOURS_LABEL = "Daily 00:00-24:00"
 DEFAULT_TIMEZONE = "Asia/Kolkata"
+TIMEZONE_ALIASES = {
+    "Melbourne, Australia": "Australia/Melbourne",
+    "Melbourne": "Australia/Melbourne",
+    "Sydney, Australia": "Australia/Sydney",
+    "Sydney": "Australia/Sydney",
+}
+TIMEZONE_FALLBACKS = {
+    "Australia/Melbourne": timezone(timedelta(hours=10), "Australia/Melbourne"),
+    "Australia/Sydney": timezone(timedelta(hours=10), "Australia/Sydney"),
+}
 
 
 def dialing_timezone():
-    name = os.environ.get("DIALING_TIMEZONE") or os.environ.get("BUSINESS_TIMEZONE") or DEFAULT_TIMEZONE
+    raw_name = os.environ.get("DIALING_TIMEZONE") or os.environ.get("BUSINESS_TIMEZONE") or DEFAULT_TIMEZONE
+    name = TIMEZONE_ALIASES.get(raw_name, raw_name)
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError:
         if name in {"Asia/Kolkata", "Asia/Calcutta", DEFAULT_TIMEZONE}:
             return timezone(timedelta(hours=5, minutes=30), name)
+        if name in TIMEZONE_FALLBACKS:
+            return TIMEZONE_FALLBACKS[name]
         raise
 
 
