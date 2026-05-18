@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import urllib.error
 from pathlib import Path
 from typing import Any
 
@@ -82,8 +83,23 @@ def process_role_folder(
     if execute and not api_key:
         raise HTTPException(status_code=500, detail="Set VAPI_API_KEY when VAPI_EXECUTE_CALLS=true")
 
-    folder = _download_role_folder(role_folder_id)
-    jd, questions, candidates = load_local_role_folder(folder)
+    try:
+        folder = _download_role_folder(role_folder_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Google Drive request failed with HTTP {exc.code}: {body}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to download Drive folder {role_folder_id}: {exc}") from exc
+
+    try:
+        jd, questions, candidates = load_local_role_folder(folder)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to parse role folder {role_folder_id}: {exc}") from exc
 
     if candidate_file_id or candidate_file_name:
         candidates = [
@@ -140,7 +156,10 @@ def process_role_folder(
             "queue_file": str(queue_path),
         }
 
-    responses = [place_vapi_call(payload, api_key=api_key) for payload in payloads]
+    try:
+        responses = [place_vapi_call(payload, api_key=api_key) for payload in payloads]
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {
         "status": "calls_started",
         "role_folder_id": role_folder_id,
