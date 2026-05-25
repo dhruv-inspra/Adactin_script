@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -60,32 +58,23 @@ class N8nIntegrationTests(unittest.TestCase):
         self.assertEqual(response["payload_count"], 1)
         self.assertEqual(response["payloads"][0]["customer"]["number"], "+61458541865")
 
-    def test_outside_business_hours_queues_calls_instead_of_dialing(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            queue_file = Path(tmpdir) / "call_queue.jsonl"
-            with patch("guidewire_screening.api.current_dialing_window") as window:
-                window.return_value = {
-                    "is_open": False,
-                    "scheduled_for": "2026-05-15T09:00:00+05:30",
-                    "business_hours": "Mon-Fri 09:00-18:00",
-                    "timezone": "Asia/Kolkata",
+    def test_start_calls_executes_without_dialing_window_queue(self) -> None:
+        with patch("guidewire_screening.api.place_vapi_call") as place_call:
+            place_call.return_value = {"id": "call-1"}
+            response = start_calls_request(
+                {
+                    "local_folder": str(ROOT),
+                    "phone_number_id": "phone-number-id",
+                    "api_key": "api-key",
+                    "execute": True,
+                    "limit": 1,
                 }
-                with patch.dict(os.environ, {"CALL_QUEUE_FILE": str(queue_file)}):
-                    response = start_calls_request(
-                        {
-                            "local_folder": str(ROOT),
-                            "phone_number_id": "phone-number-id",
-                            "api_key": "api-key",
-                            "execute": True,
-                            "limit": 1,
-                        }
-                    )
-            queued_text = queue_file.read_text(encoding="utf-8").strip()
+            )
 
-        self.assertEqual(response["status"], "calls_queued")
-        self.assertEqual(response["scheduled_for"], "2026-05-15T09:00:00+05:30")
+        self.assertEqual(response["status"], "calls_started")
         self.assertEqual(response["payload_count"], 1)
-        self.assertTrue(queued_text)
+        self.assertEqual(response["responses"], [{"id": "call-1"}])
+        place_call.assert_called_once()
 
     def test_business_hours_next_window_after_6pm_is_next_working_day(self) -> None:
         after_hours = datetime(2026, 5, 14, 18, 30, tzinfo=timezone(timedelta(hours=10)))
@@ -151,8 +140,8 @@ class N8nIntegrationTests(unittest.TestCase):
         self.assertTrue(_has_http_node_to(workflows["guidewire-vapi-end-call.workflow.json"], "/vapi/end-of-call"))
         self.assertTrue(_has_http_node_to(workflows["role-folder-drive-trigger.workflow.json"], "/drive-event"))
         self.assertIn("SCREENING_SERVICE_URL", json.dumps(workflows["role-folder-drive-trigger.workflow.json"]))
-        self.assertIn("Wait Until Dialing Window", json.dumps(workflows["guidewire-start-calls.workflow.json"]))
-        self.assertIn("Wait Until Dialing Window", json.dumps(workflows["role-folder-drive-trigger.workflow.json"]))
+        self.assertNotIn("Wait Until Dialing Window", json.dumps(workflows["guidewire-start-calls.workflow.json"]))
+        self.assertNotIn("Wait Until Dialing Window", json.dumps(workflows["role-folder-drive-trigger.workflow.json"]))
 
 
 def _webhook_paths(workflow: dict) -> set[str]:

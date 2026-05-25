@@ -22,7 +22,7 @@ It parses candidates, derives JD-specific interview questions, builds Vapi outbo
 - HTTP API endpoints for n8n orchestration.
 - Importable n8n workflow templates for preview, starting calls, and Vapi end-of-call reports.
 - Importable n8n Google Drive trigger workflow for new role folders and uploaded resume/JD files.
-- Dialing guardrail: real outbound calls are allowed only Monday-Friday, 09:00-18:00. Uploads or start-call requests outside that window are queued for the next working-day dialing window.
+- Outbound calls can be started immediately when execution is enabled.
 - End-of-call webhook server that evaluates answers and appends results to CSV and optionally Google Sheets.
 - Service-account Google Drive folder download and Google Sheets append adapters.
 
@@ -182,7 +182,7 @@ First run it with `execute: false` to inspect payloads in n8n:
 
 Set `execute` to `true` only when ready to place outbound calls.
 
-When `execute` is `true`, Python checks the dialing window before calling Vapi. Outside Monday-Friday 09:00-18:00 it returns `status: "calls_queued"` and writes payloads to `CALL_QUEUE_FILE` instead of dialing immediately.
+When `execute` is `true`, Python starts Vapi calls immediately.
 
 If the workflow is triggered by one changed resume, pass either `candidate_file_id`, `candidate_file_name`, or `candidate_id`. The API will scan the role folder but dial only that candidate:
 
@@ -214,12 +214,11 @@ Set these n8n environment variables:
 ROLE_PARENT_FOLDER_ID=Google Drive folder that contains all role folders
 SCREENING_SERVICE_URL=https://your-render-service.onrender.com
 VAPI_EXECUTE_CALLS=false
-DIALING_TIMEZONE_OFFSET_MINUTES=330
 ```
 
 Keep `VAPI_EXECUTE_CALLS=false` until the preview payloads look correct. Set it to `true` only when you want real outbound calls.
 
-The Drive trigger workflow waits until the next dialing window before calling the Python service. The default n8n offset is `330` minutes for India time. The Python service also enforces the same window using `DIALING_TIMEZONE` or `BUSINESS_TIMEZONE` and defaults to `Asia/Kolkata`.
+The Drive trigger workflow calls the Python service immediately after the upload wait step.
 
 Put the prompt from `vapi_prompt_with_variable.md` in the saved Vapi assistant and include `{{qualification_questions}}` where the questions should appear.
 

@@ -31,7 +31,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        780,
+        260,
         0
       ]
     },
@@ -46,33 +46,6 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1040,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const source = $json.body || $json;\nconst offsetMinutes = Number(source.dialing_timezone_offset_minutes || $env.DIALING_TIMEZONE_OFFSET_MINUTES || 330);\nconst nowUtc = new Date();\nconst local = new Date(nowUtc.getTime() + offsetMinutes * 60000);\nfunction atLocalHour(date, hour) {\n  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hour, 0, 0, 0) - offsetMinutes * 60000);\n}\nfunction nextBusinessStart(date) {\n  const next = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, 9, 0, 0, 0));\n  while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next.setUTCDate(next.getUTCDate() + 1);\n  return new Date(next.getTime() - offsetMinutes * 60000);\n}\nconst day = local.getUTCDay();\nconst hour = local.getUTCHours();\nlet waitUntil = nowUtc;\nlet shouldWait = false;\nif (day === 0 || day === 6) {\n  const monday = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 9, 0, 0, 0));\n  monday.setUTCDate(monday.getUTCDate() + (day === 6 ? 2 : 1));\n  waitUntil = new Date(monday.getTime() - offsetMinutes * 60000);\n  shouldWait = true;\n} else if (hour < 9) {\n  waitUntil = atLocalHour(local, 9);\n  shouldWait = true;\n} else if (hour >= 18) {\n  waitUntil = nextBusinessStart(local);\n  shouldWait = true;\n}\nreturn [{ json: { ...$json, dialing_business_hours: 'Mon-Fri 09:00-18:00', dialing_timezone_offset_minutes: offsetMinutes, dialing_wait_until: waitUntil.toISOString(), should_wait_for_dialing_window: shouldWait, queued_for_next_dialing_window: shouldWait } }];"
-      },
-      "id": "6c3d0889-5ffd-4817-a293-start004",
-      "name": "Calculate Dialing Window",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        260,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "resume": "specificTime",
-        "dateTime": "={{ $json.dialing_wait_until }}"
-      },
-      "id": "7327a8dc-7668-4549-a0e5-start005",
-      "name": "Wait Until Dialing Window",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
         520,
         0
       ]
@@ -80,28 +53,6 @@
   ],
   "connections": {
     "Webhook - Start Calls": {
-      "main": [
-        [
-          {
-            "node": "Calculate Dialing Window",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Calculate Dialing Window": {
-      "main": [
-        [
-          {
-            "node": "Wait Until Dialing Window",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait Until Dialing Window": {
       "main": [
         [
           {

@@ -5,7 +5,6 @@ import json
 import os
 from pathlib import Path
 
-from .business_hours import current_dialing_window, queue_call_payloads
 from .google_auth import token_provider_from_env
 from .google_drive import DRIVE_SCOPE, GoogleDriveRoleFolder
 from .parsers import parse_candidates_from_folder, parse_jd, parse_questionnaire
@@ -129,20 +128,6 @@ def run_call(args: argparse.Namespace) -> int:
 
     if not args.execute:
         print(f"Wrote {len(payloads)} payloads to {args.out}. Re-run with --execute to place calls.")
-        return 0
-
-    dialing_window = current_dialing_window()
-    if not dialing_window["is_open"]:
-        queue_path = queue_call_payloads(
-            payloads,
-            scheduled_for=dialing_window["scheduled_for"],
-            reason="outside_business_hours",
-        )
-        print(
-            "Outside dialing hours "
-            f"({dialing_window['business_hours']} {dialing_window['timezone']}). "
-            f"Queued {len(payloads)} payloads in {queue_path} for {dialing_window['scheduled_for']}."
-        )
         return 0
 
     responses = [place_vapi_call(payload, args.api_key) for payload in payloads]

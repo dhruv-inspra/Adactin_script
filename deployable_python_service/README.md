@@ -31,8 +31,6 @@ VAPI_ASSISTANT_ID=your saved Vapi assistant id
 VAPI_API_KEY=your Vapi API key
 VAPI_SERVER_URL=https://your-render-service.onrender.com/vapi/end-of-call
 VAPI_EXECUTE_CALLS=false
-DIALING_TIMEZONE=Asia/Kolkata
-CALL_QUEUE_FILE=outputs/call_queue.jsonl
 ```
 
 Keep `VAPI_EXECUTE_CALLS=false` until the returned Vapi payloads look correct. Set it to `true` when you want real calls.
@@ -88,8 +86,7 @@ Webhook endpoint for Vapi end-of-call reports. The service reads `drive_folder_i
 }
 ```
 
-8. If `VAPI_EXECUTE_CALLS=false`, it returns payloads only. If `true`, it calls Vapi only during Monday-Friday 09:00-18:00 in `DIALING_TIMEZONE`.
-9. Outside dialing hours, it returns `status: "calls_queued"` and appends the payloads to `CALL_QUEUE_FILE` for the next working-day dialing window.
+8. If `VAPI_EXECUTE_CALLS=false`, it returns payloads only. If `true`, it calls Vapi immediately.
 
 ## Google Drive Access
 

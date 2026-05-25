@@ -6,7 +6,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
-from .business_hours import current_dialing_window, queue_call_payloads
 from .google_auth import token_provider_from_env
 from .google_sheets import SHEETS_SCOPE, GoogleSheetsResultSink
 from .pipeline import build_call_inputs, load_local_role_folder
@@ -67,23 +66,6 @@ def start_calls_request(request_body: dict[str, Any]) -> dict[str, Any]:
     ]
     if not request_body.get("execute", False):
         return {"status": "payloads_built", "payload_count": len(payloads), "payloads": payloads}
-
-    dialing_window = current_dialing_window()
-    if not dialing_window["is_open"]:
-        queue_path = queue_call_payloads(
-            payloads,
-            scheduled_for=dialing_window["scheduled_for"],
-            reason="outside_business_hours",
-        )
-        return {
-            "status": "calls_queued",
-            "reason": "outside_business_hours",
-            "payload_count": len(payloads),
-            "scheduled_for": dialing_window["scheduled_for"],
-            "business_hours": dialing_window["business_hours"],
-            "timezone": dialing_window["timezone"],
-            "queue_file": str(queue_path),
-        }
 
     api_key = request_body.get("api_key") or os.environ.get("VAPI_API_KEY")
     if not api_key:
