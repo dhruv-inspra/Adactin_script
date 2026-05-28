@@ -22,6 +22,8 @@ TIMEZONE_ALIASES = {
 TIMEZONE_FALLBACKS = {
     "Australia/Melbourne": timezone(timedelta(hours=10), "Australia/Melbourne"),
     "Australia/Sydney": timezone(timedelta(hours=10), "Australia/Sydney"),
+    "Asia/Kolkata": timezone(timedelta(hours=5, minutes=30), "Asia/Kolkata"),
+    "Asia/Calcutta": timezone(timedelta(hours=5, minutes=30), "Asia/Calcutta"),
 }
 
 
@@ -31,8 +33,6 @@ def dialing_timezone():
     try:
         return ZoneInfo(name)
     except ZoneInfoNotFoundError:
-        if name in {"Asia/Kolkata", "Asia/Calcutta", DEFAULT_TIMEZONE}:
-            return timezone(timedelta(hours=5, minutes=30), name)
         if name in TIMEZONE_FALLBACKS:
             return TIMEZONE_FALLBACKS[name]
         raise

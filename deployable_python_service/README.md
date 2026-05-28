@@ -35,6 +35,8 @@ VAPI_EXECUTE_CALLS=false
 
 Keep `VAPI_EXECUTE_CALLS=false` until the returned Vapi payloads look correct. Set it to `true` when you want real calls.
 
+When execution is enabled, calls are placed only during the dialing window `Mon-Fri 09:00-18:00` in `Australia/Melbourne`. Outside that window, the service returns `status: "calls_queued"` and writes payloads to `CALL_QUEUE_FILE` or `outputs/call_queue.jsonl`.
+
 ## Endpoints
 
 `GET /health`
