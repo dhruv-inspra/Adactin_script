@@ -9,6 +9,7 @@ from pathlib import Path
 
 from guidewire_screening.models import Candidate, CandidateCallInput, Question
 from guidewire_screening.parsers import (
+    extract_jd_role_title,
     extract_screening_answers_from_cv,
     parse_candidates_from_folder,
     parse_jd,
@@ -92,6 +93,20 @@ class ScreeningWorkflowTests(unittest.TestCase):
         self.assertEqual(len(first.questions), 14)
         self.assertIn("Guidewire", first.cv_summary)
         self.assertTrue(first.phone.startswith("+61"))
+
+    def test_jd_role_title_extraction_supports_top_of_jd_formats(self) -> None:
+        self.assertEqual(
+            extract_jd_role_title(["Role: Senior QA Automation Engineer", "Role Overview", "Build tests."]),
+            "Senior QA Automation Engineer",
+        )
+        self.assertEqual(
+            extract_jd_role_title(["Job Title", "Data Engineer", "About the Role"]),
+            "Data Engineer",
+        )
+        self.assertEqual(
+            extract_jd_role_title(["Salesforce Developer", "Role Overview", "Configure Salesforce."]),
+            "Salesforce Developer",
+        )
 
     def test_jd_adds_role_specific_questions_to_base_questionnaire(self) -> None:
         jd = parse_jd(ROOT / "Guidewire_Developer_JD.docx")
@@ -220,6 +235,7 @@ class ScreeningWorkflowTests(unittest.TestCase):
         self.assertEqual(payload["assistantId"], "assistant-id")
         self.assertNotIn("assistant", payload)
         variables = payload["assistantOverrides"]["variableValues"]
+        self.assertEqual(variables["role_title"], "Guidewire Developer")
         self.assertIn("qualification_questions", variables)
         self.assertIn("q014: Do you have experience with Gosu programming?", variables["qualification_questions"])
 

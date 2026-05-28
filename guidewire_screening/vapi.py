@@ -42,6 +42,7 @@ def build_vapi_call_payload(
         payload["assistantId"] = assistant_id
         payload["assistantOverrides"] = {
             "variableValues": {
+                "role_title": call_input.role_title,
                 "qualification_questions": format_qualification_questions(call_input.questions),
             }
         }

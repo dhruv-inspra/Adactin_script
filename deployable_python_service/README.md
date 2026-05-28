@@ -1,6 +1,6 @@
 # Deployable Role Folder Screening Service
 
-This FastAPI service replaces the n8n processing steps. n8n only forwards a Google Drive event to `/drive-event`; this service downloads the role folder, parses the JD and resumes, builds qualification questions, sends `qualification_questions` to Vapi as a dynamic variable, and optionally starts calls.
+This FastAPI service replaces the n8n processing steps. n8n only forwards a Google Drive event to `/drive-event`; this service downloads the role folder, parses the JD and resumes, builds qualification questions, sends `role_title` and `qualification_questions` to Vapi as dynamic variables, and optionally starts calls.
 
 ## Recommended Host
 
@@ -74,12 +74,13 @@ Webhook endpoint for Vapi end-of-call reports. The service reads `drive_folder_i
 4. It finds the JD, parses resumes, extracts candidate name and phone number, and builds questions.
 5. If an `.xlsx` questionnaire exists, those questions are used first. If not, the service uses a default basic qualification set.
 6. JD-based role questions are appended.
-7. The service creates Vapi call payloads using the saved assistant id and this dynamic variable:
+7. The service creates Vapi call payloads using the saved assistant id and these dynamic variables:
 
 ```json
 {
   "assistantOverrides": {
     "variableValues": {
+      "role_title": "Guidewire Developer",
       "qualification_questions": "q001: ...\nq002: ..."
     }
   }

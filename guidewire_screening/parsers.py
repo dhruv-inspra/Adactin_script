@@ -135,11 +135,7 @@ def parse_jd(path: Path) -> JobDescription:
     manifest = load_drive_manifest(path.parent)
     text = parse_document_text(path)
     lines = [line.strip() for line in text.splitlines() if line.strip()]
-    title = "Guidewire Developer"
-    for idx, line in enumerate(lines):
-        if line.lower() == "job title" and idx + 1 < len(lines):
-            title = lines[idx + 1]
-            break
+    title = extract_jd_role_title(lines, path)
     summary = summarize_jd(lines)
     return JobDescription(
         source_file=path,
@@ -148,6 +144,49 @@ def parse_jd(path: Path) -> JobDescription:
         summary=summary,
         drive_file_id=manifest.get(path.name, {}).get("id"),
     )
+
+
+def extract_jd_role_title(lines: list[str], path: Path | None = None) -> str:
+    for idx, line in enumerate(lines[:25]):
+        cleaned = _clean_role_title(line)
+        lower = cleaned.lower()
+        if lower in {"job title", "role title", "position title", "title", "role", "position"}:
+            if idx + 1 < len(lines):
+                return _clean_role_title(lines[idx + 1])
+            continue
+
+        match = re.match(
+            r"(?i)^(?:job\s*title|role\s*title|position\s*title|title|role|position)\s*[:\-]\s*(.+)$",
+            cleaned,
+        )
+        if match:
+            return _clean_role_title(match.group(1))
+
+    for line in lines[:8]:
+        cleaned = _clean_role_title(line)
+        lower = cleaned.lower()
+        if (
+            cleaned
+            and 2 <= len(cleaned.split()) <= 8
+            and not lower.startswith(("job description", "about ", "overview", "role overview"))
+            and lower not in {"essential", "highly desirable", "candidate screening criteria"}
+        ):
+            return cleaned
+
+    if path:
+        stem = re.sub(r"(?i)\b(jd|job\s*description|description)\b", "", path.stem)
+        stem = re.sub(r"[_\-.]+", " ", stem)
+        stem = re.sub(r"\s+", " ", stem).strip()
+        if stem:
+            return " ".join(part[:1].upper() + part[1:] for part in stem.split())
+
+    return "Role"
+
+
+def _clean_role_title(value: str) -> str:
+    value = re.sub(r"\s+", " ", value).strip(" :-\t")
+    value = re.sub(r"(?i)\s*\|\s*adactin.*$", "", value).strip()
+    return value
 
 
 def load_drive_manifest(folder: Path) -> dict[str, dict[str, str]]:

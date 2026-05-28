@@ -17,7 +17,7 @@ It parses candidates, derives JD-specific interview questions, builds Vapi outbo
 - Questionnaire parsing from `Questions Template.xlsx`; the workbook remains the base questionnaire.
 - JD-derived role questions are appended to the base questionnaire for each role folder.
 - Monica prompt generation with the revised voice style, consent flow, guardrails, and no Zoho tagging tool.
-- Vapi outbound call payload generation using either a saved assistant plus the `qualification_questions` dynamic variable, or a transient assistant config when no assistant id is provided.
+- Vapi outbound call payload generation using either a saved assistant plus the `role_title` and `qualification_questions` dynamic variables, or a transient assistant config when no assistant id is provided.
 - Manual dry-run and call-trigger CLI.
 - HTTP API endpoints for n8n orchestration.
 - Importable n8n workflow templates for preview, starting calls, and Vapi end-of-call reports.
@@ -206,7 +206,7 @@ If the workflow is triggered by one changed resume, pass either `candidate_file_
 - If a file is uploaded inside an existing role folder, it uses the file's parent as the role folder.
 - It waits 2 minutes before scanning so resume/JD uploads can finish.
 - It posts the Drive event to the deployable Python service at `/drive-event`.
-- The Python service downloads the role folder, parses the JD and resumes, builds role questions, and sends `qualification_questions` to Vapi.
+- The Python service downloads the role folder, parses the JD and resumes, builds role questions, and sends `role_title` and `qualification_questions` to Vapi.
 
 Set these n8n environment variables:
 
@@ -220,7 +220,7 @@ Keep `VAPI_EXECUTE_CALLS=false` until the preview payloads look correct. Set it 
 
 The Drive trigger workflow calls the Python service immediately after the upload wait step.
 
-Put the prompt from `vapi_prompt_with_variable.md` in the saved Vapi assistant and include `{{qualification_questions}}` where the questions should appear.
+Put the prompt from `vapi_prompt_with_variable.md` in the saved Vapi assistant and include `{{role_title}}` where the role should appear and `{{qualification_questions}}` where the questions should appear.
 
 The service deploy files are in `deployable_python_service/`.
 
