@@ -23,7 +23,7 @@ It parses candidates, derives JD-specific interview questions, builds Vapi outbo
 - Importable n8n workflow templates for preview, starting calls, and Vapi end-of-call reports.
 - Importable n8n Google Drive trigger workflow for new role folders and uploaded resume/JD files.
 - Outbound calls can be started immediately when execution is enabled.
-- Execution is gated to the Melbourne dialing window, Monday to Friday from 9 AM to 6 PM. Outside that window, call payloads are queued instead of dialed.
+- The Melbourne dialing window is temporarily disabled for testing, so execution starts calls immediately.
 - End-of-call webhook server that evaluates answers and appends results to CSV and optionally Google Sheets.
 - Service-account Google Drive folder download and Google Sheets append adapters.
 

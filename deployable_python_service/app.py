@@ -10,7 +10,6 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from guidewire_screening.api import process_vapi_event_request
-from guidewire_screening.business_hours import current_dialing_window, queue_call_payloads
 from guidewire_screening.google_auth import token_provider_from_env
 from guidewire_screening.google_drive import DRIVE_SCOPE, GoogleDriveRoleFolder
 from guidewire_screening.pipeline import build_call_inputs, load_local_role_folder
@@ -18,7 +17,7 @@ from guidewire_screening.vapi import build_vapi_call_payload, place_vapi_call
 
 
 app = FastAPI(title="Role Folder Screening Service")
-SERVICE_VERSION = "dialing-window-2026-05-28-1"
+SERVICE_VERSION = "testing-no-dialing-window-2026-05-28-1"
 
 
 @app.exception_handler(Exception)
@@ -53,7 +52,7 @@ def config_check() -> dict[str, Any]:
             "VAPI_API_KEY": bool(os.environ.get("VAPI_API_KEY")),
             "VAPI_SERVER_URL": bool(os.environ.get("VAPI_SERVER_URL")),
         },
-        "dialing_window": current_dialing_window() | {"enabled": True},
+        "dialing_window": {"enabled": False, "reason": "temporarily disabled for testing"},
     }
 
 
@@ -166,24 +165,6 @@ def process_role_folder(
             "question_count": len(questions),
             "payload_count": len(payloads),
             "payloads": payloads,
-        }
-
-    dialing_window = current_dialing_window()
-    if not dialing_window["is_open"]:
-        queue_path = queue_call_payloads(
-            payloads,
-            scheduled_for=dialing_window["scheduled_for"],
-            reason="outside_business_hours",
-        )
-        return {
-            "status": "calls_queued",
-            "role_folder_id": role_folder_id,
-            "role_title": jd.title,
-            "candidate_count": len(candidates),
-            "question_count": len(questions),
-            "payload_count": len(payloads),
-            "dialing_window": dialing_window,
-            "queue_file": str(queue_path),
         }
 
     try:

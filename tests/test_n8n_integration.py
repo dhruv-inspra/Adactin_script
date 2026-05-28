@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -59,17 +58,8 @@ class N8nIntegrationTests(unittest.TestCase):
         self.assertEqual(response["payload_count"], 1)
         self.assertEqual(response["payloads"][0]["customer"]["number"], "+61458541865")
 
-    def test_start_calls_executes_inside_dialing_window(self) -> None:
-        with patch("guidewire_screening.api.current_dialing_window") as dialing_window, patch(
-            "guidewire_screening.api.place_vapi_call"
-        ) as place_call:
-            dialing_window.return_value = {
-                "is_open": True,
-                "now": "2026-05-14T10:00:00+10:00",
-                "scheduled_for": "2026-05-14T10:00:00+10:00",
-                "timezone": "Australia/Melbourne",
-                "business_hours": "Mon-Fri 09:00-18:00",
-            }
+    def test_start_calls_executes_without_dialing_window_queue_for_testing(self) -> None:
+        with patch("guidewire_screening.api.place_vapi_call") as place_call:
             place_call.return_value = {"id": "call-1"}
             response = start_calls_request(
                 {
@@ -85,38 +75,6 @@ class N8nIntegrationTests(unittest.TestCase):
         self.assertEqual(response["payload_count"], 1)
         self.assertEqual(response["responses"], [{"id": "call-1"}])
         place_call.assert_called_once()
-
-    def test_start_calls_queues_outside_dialing_window(self) -> None:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            queue_file = Path(tmpdir) / "call_queue.jsonl"
-            with patch.dict("os.environ", {"CALL_QUEUE_FILE": str(queue_file)}), patch(
-                "guidewire_screening.api.current_dialing_window"
-            ) as dialing_window, patch("guidewire_screening.api.place_vapi_call") as place_call:
-                dialing_window.return_value = {
-                    "is_open": False,
-                    "now": "2026-05-14T18:30:00+10:00",
-                    "scheduled_for": "2026-05-15T09:00:00+10:00",
-                    "timezone": "Australia/Melbourne",
-                    "business_hours": "Mon-Fri 09:00-18:00",
-                }
-
-                response = start_calls_request(
-                    {
-                        "local_folder": str(ROOT),
-                        "phone_number_id": "phone-number-id",
-                        "api_key": "api-key",
-                        "execute": True,
-                        "limit": 1,
-                    }
-                )
-
-            self.assertEqual(response["status"], "calls_queued")
-            self.assertEqual(response["payload_count"], 1)
-            self.assertEqual(response["dialing_window"]["scheduled_for"], "2026-05-15T09:00:00+10:00")
-            self.assertEqual(response["queue_file"], str(queue_file))
-            self.assertTrue(queue_file.exists())
-            self.assertEqual(len(queue_file.read_text(encoding="utf-8").splitlines()), 1)
-            place_call.assert_not_called()
 
     def test_business_hours_next_window_after_6pm_is_next_working_day(self) -> None:
         after_hours = datetime(2026, 5, 14, 18, 30, tzinfo=timezone(timedelta(hours=10)))
